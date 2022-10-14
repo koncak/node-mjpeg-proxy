@@ -1,0 +1,25 @@
+[Unit]
+Description=Mjpeg FullHD service
+After=syslog.target network.target pulseaudio.socket
+
+[Service]
+ExecStart=/usr/bin/node /home/%USER%/node-mjpeg-proxy/express-app.js
+
+Environment=
+
+Restart=on-failure
+KillSignal=SIGINT
+
+# log output to syslog as 'speaker_socket'
+SyslogIdentifier=mjpeg_proxy
+StandardOutput=syslog
+
+# non-root user to run as
+WorkingDirectory=/home/%USER%/node-mjpeg-proxy
+User=%USER%
+Group=%USER%
+
+[Install]
+WantedBy=multi-user.target
+
+
