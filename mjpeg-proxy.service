@@ -1,16 +1,14 @@
 [Unit]
-Description=Mjpeg FullHD service
+Description=Mjpeg proxy service
 After=syslog.target network.target pulseaudio.socket
 
 [Service]
 ExecStart=/usr/bin/node /home/%USER%/node-mjpeg-proxy/express-app.js
 
-Environment=
-
 Restart=on-failure
 KillSignal=SIGINT
 
-# log output to syslog as 'speaker_socket'
+# log output to syslog as 'mjpeg_proxy'
 SyslogIdentifier=mjpeg_proxy
 StandardOutput=syslog
 
