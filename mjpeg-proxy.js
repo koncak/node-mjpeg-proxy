@@ -41,9 +41,8 @@ var RUNNING = 0;
 
 var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
   var self = this;
-  console.dir(self);
   RUNNING += 1;
-  console.log(`RUNNING : ${RUNNING}`)
+  console.log(`RUNNING : ${RUNNING}`);
   if (!mjpegUrl) throw new Error('Please provide a source MJPEG URL');
 
   self.mjpegOptions = new URL(mjpegUrl);
@@ -62,11 +61,10 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
     }
     now = Math.floor(Date.now() / 1000);
     if (self.data_timestamp !== null){
-       diff = now -self.data_timestamp
-       
+       diff = now -self.data_timestamp;
        if (diff >= 15) {
-          console.log(`DATA DIFF, ${mjpegUrl} : ${diff}`)
-          self.mjpegRequest = null;
+          console.log(`DATA DIFF, ${mjpegUrl} : ${diff}`);
+	  self.mjpegRequest = null;
           self.globalMjpegResponse.destroy();
           for (var i = self.audienceResponses.length; i--;) {
             let _res = self.audienceResponses[i];
@@ -78,21 +76,17 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
      	  self.newAudienceResponses = [];
 	  console.log(`DESTROYING EVERYTHING`);
 	  self.data_timestamp = Math.floor(Date.now() / 1000);
-//	  exec("sudo systemctl restart mjpeg-proxy.service", (error, stdout, stderr) => {});
-//	  self.mjpegRequest.destroy();
 	  return res.end();
-        }
+	}
     }
-
 
     // There is already another client consuming the MJPEG response
     if (self.mjpegRequest !== null) {
-      console.log(`ADDING new client, Request already exists`);
       self._newClient(req, res);
     } else {
       // Send source MJPEG request
       self.mjpegRequest = http.request(self.mjpegOptions, function(mjpegResponse) {
-        console.log(`camera request ${mjpegUrl} statusCode: ${mjpegResponse.statusCode}`)
+        // console.log(`statusCode: ${mjpegResponse.statusCode}`)
         self.globalMjpegResponse = mjpegResponse;
         self.boundary = extractBoundary(mjpegResponse.headers['content-type']);
 
@@ -110,56 +104,30 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
 	
             if (self.newAudienceResponses.length > 0 && self.newAudienceResponses.indexOf(res) >= 0) {
               var p = buff.indexOf('--' + self.boundary);
-              if (p > 0) {
-		console.log(`SLICING chunk, p : ${p}`);
+              if (p >= 0) {
                 res.write(chunk.slice(p));
                 self.newAudienceResponses.splice(self.newAudienceResponses.indexOf(res), 1); // remove from new
-              } else {
-		res.write(chunk);
-		self.newAudienceResponses.splice(self.newAudienceResponses.indexOf(res), 1); // remove from new
-		}
+              }
             } else {
               res.write(chunk);
             }
           }
         });
         mjpegResponse.on('end', function () {
+          // console.log("...end");
           for (var i = self.audienceResponses.length; i--;) {
             var res = self.audienceResponses[i];
             res.end();
           }
         });
-        /*mjpegResponse.on('close', function () {
-          console.log(`${mjpegUrl} : response CLOSE`);
+        mjpegResponse.on('close', function () {
+          // console.log("...close");
         });
-	mjpegResponse.on('finish', function () {
-          console.log(`${mjpegUrl} : response FINISH`);
-        });
-	mjpegResponse.on('error', function () {
-          console.log(`${mjpegUrl} : response ERROR`);
-        });
-        mjpegResponse.on('timeout', function() {
-          console.log(`${mjpegUrl} : response TIMEOUT`)
-        });*/
+      });
 
-      });
-      
-      /*self.mjpegRequest.on('close', function(e) {
-        console.log(`${mjpegUrl} : request CLOSE`, e);
-      });
-      self.mjpegRequest.on('end', function(e) {
-        console.log(`${mjpegUrl} : request END`, e);
-      });
       self.mjpegRequest.on('error', function(e) {
-        console.log(`${mjpegUrl} : request ERROR`, e);
+        console.error('problem with request: ', e);
       });
-      self.mjpegRequest.on('finish', function() {
-        console.log(`${mjpegUrl} : request FINISH`)
-      });
-      self.mjpegRequest.on('timeout', function() {
-        console.log(`${mjpegUrl} : request TIMEOUT`)
-      });*/
-
       self.mjpegRequest.end();
     }
   }
@@ -194,19 +162,17 @@ var MjpegProxy = exports.MjpegProxy = function(mjpegUrl) {
     }
 
     res.socket.on('close', function () {
-      //console.log('exiting client');
+      // console.log('exiting client!');
 
       self.audienceResponses.splice(self.audienceResponses.indexOf(res), 1);
       if (self.newAudienceResponses.indexOf(res) >= 0) {
         self.newAudienceResponses.splice(self.newAudienceResponses.indexOf(res), 1); // remove from new
       }
       if (self.audienceResponses.length == 0) {
-	if (self.mjpegRequest !== null){
-          self.mjpegRequest.destroy();
-	}
-        console.log('No audience left, destroy request');
+	console.log('No audience left, destroy request');
+        self.data_timestamp = null;
+	self.mjpegRequest = null;
         if (self.globalMjpegResponse) {
-          console.log('Destroy response')
           self.globalMjpegResponse.destroy();
         }
       }
